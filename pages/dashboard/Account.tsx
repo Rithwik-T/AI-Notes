@@ -1,21 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, Shield, AlertTriangle, Save, Camera, Lock, ChevronRight, Globe, Key, Trash2, Smartphone } from 'lucide-react';
+import { User, Mail, Shield, AlertTriangle, Save, Camera, Lock, ChevronRight, Globe, Key, Trash2, Smartphone, CreditCard, CheckCircle2 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { supabase } from '../../supabaseClient';
 import { RoutePath } from '../../types';
 import { storageService } from '../../services/storageService';
 import { StorageImage } from '../../components/ui/StorageImage';
+import { useAuth } from '../../context/AuthContext';
 
 export const Account: React.FC = () => {
   const navigate = useNavigate();
+  const { user: authUser, refreshUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   
   // User specific state
   const [userId, setUserId] = useState('');
   const [email, setEmail] = useState('');
+  const [message, setMessage] = useState<{text: string, type: 'success' | 'error'} | null>(null);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
     displayName: '',
@@ -78,7 +82,7 @@ export const Account: React.FC = () => {
         
       } catch (error) {
         console.error("Error uploading avatar:", error);
-        alert("Failed to upload avatar.");
+        setMessage({ text: "Failed to upload avatar.", type: 'error' });
       } finally {
         setLoading(false);
       }
@@ -102,11 +106,14 @@ export const Account: React.FC = () => {
       if (error) throw error;
       
       // Simulate save delay
-      setTimeout(() => setLoading(false), 500);
+      setTimeout(() => {
+        setLoading(false);
+        setMessage({ text: "Profile updated successfully.", type: 'success' });
+      }, 500);
 
     } catch (error) {
       console.error("Error updating profile:", error);
-      alert("Failed to update profile.");
+      setMessage({ text: "Failed to update profile.", type: 'error' });
       setLoading(false);
     }
   };
@@ -116,13 +123,34 @@ export const Account: React.FC = () => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: window.location.origin + '/account',
     });
-    if (error) alert(error.message);
-    else alert('Password reset email sent!');
+    if (error) {
+      setMessage({ text: error.message, type: 'error' });
+    } else {
+      setMessage({ text: 'Password reset email sent!', type: 'success' });
+    }
   };
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate(RoutePath.LOGIN);
+  };
+
+  const handleCancelPlan = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: { plan: 'free' }
+      });
+      if (error) throw error;
+      await refreshUser();
+      setMessage({ text: "Your plan has been cancelled.", type: 'success' });
+      setShowCancelConfirm(false);
+    } catch (error) {
+      console.error("Error cancelling plan:", error);
+      setMessage({ text: "Failed to cancel plan.", type: 'error' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (fetching) {
@@ -152,9 +180,16 @@ export const Account: React.FC = () => {
             <form onSubmit={handleSubmit} className="divide-y divide-white/40">
                 
                 {/* Header Section */}
-                <div className="px-10 py-12 flex flex-col items-center justify-center text-center relative overflow-hidden">
+                <div className="px-6 sm:px-10 py-8 sm:py-12 flex flex-col items-center justify-center text-center relative overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-b from-white/40 to-transparent opacity-50 pointer-events-none" />
                     
+                    {message && (
+                      <div className={`mb-6 px-4 py-3 rounded-xl text-sm font-medium w-full max-w-md flex items-center justify-center gap-2 ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                        {message.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+                        {message.text}
+                      </div>
+                    )}
+
                     {/* Avatar Group */}
                     <div className="group relative mb-6 cursor-pointer" onClick={() => document.getElementById('avatar-upload')?.click()}>
                         <div className="h-32 w-32 rounded-full p-1 bg-white/50 backdrop-blur-xl border border-white shadow-xl transition-transform duration-500 group-hover:scale-105 relative overflow-hidden">
@@ -192,7 +227,7 @@ export const Account: React.FC = () => {
                 </div>
 
                 {/* Main Settings Grid */}
-                <div className="px-6 sm:px-12 py-12 space-y-12 bg-white/20">
+                <div className="px-6 sm:px-12 py-8 sm:py-12 space-y-8 sm:space-y-12 bg-white/20">
                     
                     {/* Section: Profile Information */}
                     <div className="space-y-6">
@@ -255,9 +290,9 @@ export const Account: React.FC = () => {
                         </div>
 
                         <div className="rounded-3xl border border-white/60 bg-white/50 p-6 shadow-sm">
-                            <div className="flex items-center justify-between">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                 <div className="flex items-center gap-4">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
                                         <Key size={18} />
                                     </div>
                                     <div>
@@ -265,16 +300,16 @@ export const Account: React.FC = () => {
                                         <p className="text-xs text-slate-500">Last changed 3 months ago</p>
                                     </div>
                                 </div>
-                                <Button type="button" variant="outline" size="sm" onClick={handlePasswordReset}>
+                                <Button type="button" variant="outline" size="sm" onClick={handlePasswordReset} className="w-full sm:w-auto justify-center">
                                     Change Password
                                 </Button>
                             </div>
                             
                             <div className="my-4 h-px w-full bg-slate-200/50" />
                             
-                            <div className="flex items-center justify-between opacity-60 grayscale">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 opacity-60 grayscale">
                                 <div className="flex items-center gap-4">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
                                         <Smartphone size={18} />
                                     </div>
                                     <div>
@@ -282,9 +317,52 @@ export const Account: React.FC = () => {
                                         <p className="text-xs text-slate-500">Add an extra layer of security</p>
                                     </div>
                                 </div>
-                                <div className="relative inline-flex h-6 w-11 items-center rounded-full bg-slate-200">
+                                <div className="relative inline-flex h-6 w-11 items-center rounded-full bg-slate-200 self-start sm:self-auto ml-14 sm:ml-0">
                                     <span className="h-4 w-4 translate-x-1 transform rounded-full bg-white transition" />
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Section: Subscription */}
+                    <div className="space-y-6 pt-6 border-t border-slate-200/40">
+                        <div className="flex items-center gap-3 mb-2">
+                             <div className="h-8 w-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 ring-1 ring-emerald-100 shadow-sm">
+                                 <CreditCard size={16} strokeWidth={2.5} />
+                             </div>
+                             <h3 className="text-lg font-semibold text-slate-900">Subscription</h3>
+                        </div>
+
+                        <div className="rounded-3xl border border-white/60 bg-white/50 p-6 shadow-sm">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div>
+                                    <h4 className="text-sm font-bold text-slate-900">
+                                      Current Plan: <span className="uppercase text-indigo-600">{authUser?.plan || 'Free'}</span>
+                                    </h4>
+                                    <p className="text-xs text-slate-500 mt-1">
+                                      {authUser?.plan === 'pro' 
+                                        ? 'You have full access to all Pro features.' 
+                                        : authUser?.plan === 'trial'
+                                        ? 'You are currently on a 3-day free trial.'
+                                        : 'You are on the free plan with limited features.'}
+                                    </p>
+                                </div>
+                                {(authUser?.plan === 'pro' || authUser?.plan === 'trial') && (
+                                  showCancelConfirm ? (
+                                    <div className="flex items-center gap-2">
+                                      <Button type="button" variant="danger" size="sm" onClick={handleCancelPlan} isLoading={loading}>
+                                        Confirm Cancel
+                                      </Button>
+                                      <Button type="button" variant="ghost" size="sm" onClick={() => setShowCancelConfirm(false)} disabled={loading}>
+                                        Keep Plan
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <Button type="button" variant="outline" size="sm" onClick={() => setShowCancelConfirm(true)} className="whitespace-nowrap hover:bg-red-50 hover:text-red-600 hover:border-red-200">
+                                        Cancel Plan
+                                    </Button>
+                                  )
+                                )}
                             </div>
                         </div>
                     </div>
@@ -316,19 +394,19 @@ export const Account: React.FC = () => {
                 </div>
 
                 {/* Footer Action Bar */}
-                <div className="sticky bottom-0 z-10 flex items-center justify-between border-t border-white/60 bg-white/70 px-8 py-5 backdrop-blur-xl">
+                <div className="sticky bottom-0 z-10 flex flex-col-reverse sm:flex-row items-center justify-between border-t border-white/60 bg-white/70 px-4 sm:px-8 py-4 sm:py-5 backdrop-blur-xl gap-4">
                     <button 
                         type="button" 
                         onClick={handleSignOut}
-                        className="text-sm font-semibold text-slate-500 hover:text-red-600 transition-colors"
+                        className="text-sm font-semibold text-slate-500 hover:text-red-600 transition-colors w-full sm:w-auto text-center py-2 sm:py-0"
                     >
                         Sign Out
                     </button>
-                    <div className="flex gap-4">
-                         <Button type="button" variant="ghost" onClick={() => navigate(RoutePath.HOME)}>
+                    <div className="flex w-full sm:w-auto gap-3 sm:gap-4">
+                         <Button type="button" variant="ghost" onClick={() => navigate(RoutePath.HOME)} className="flex-1 sm:flex-none justify-center">
                              Cancel
                          </Button>
-                         <Button type="submit" isLoading={loading} className="shadow-[0_10px_20px_-5px_rgba(79,70,229,0.3)]">
+                         <Button type="submit" isLoading={loading} className="flex-1 sm:flex-none justify-center shadow-[0_10px_20px_-5px_rgba(79,70,229,0.3)]">
                              <Save className="mr-2 h-4 w-4" />
                              Save Changes
                          </Button>

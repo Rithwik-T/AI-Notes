@@ -4,7 +4,12 @@ import { Home, FileText, PlusCircle, Settings, LogOut, Command, LogIn } from 'lu
 import { RoutePath } from '../types';
 import { useAuth } from '../context/AuthContext';
 
-export const Sidebar: React.FC = () => {
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { pathname } = location;
@@ -40,8 +45,16 @@ export const Sidebar: React.FC = () => {
   };
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-white/60 bg-white/45 backdrop-blur-2xl hidden md:flex md:flex-col shadow-[0_4px_15px_rgba(0,0,0,0.03)]">
-      <div className="flex h-24 items-center px-8">
+    <>
+      {/* Mobile Backdrop */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-slate-900/20 backdrop-blur-sm md:hidden"
+          onClick={onClose}
+        />
+      )}
+      <aside className={`fixed left-0 top-0 z-50 h-screen w-64 border-r border-white/60 bg-white/70 md:bg-white/45 backdrop-blur-2xl flex flex-col shadow-[0_4px_15px_rgba(0,0,0,0.03)] transition-transform duration-300 ease-in-out md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="flex h-24 items-center px-8">
         <div className="flex items-center gap-3 text-slate-900 font-bold tracking-tight group cursor-default">
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg shadow-indigo-500/25 transition-transform group-hover:scale-105 group-hover:rotate-3">
             <Command size={20} />
@@ -58,6 +71,9 @@ export const Sidebar: React.FC = () => {
               <Link
                 key={item.path}
                 to={item.path}
+                onClick={() => {
+                  if (onClose) onClose();
+                }}
                 className={`flex items-center gap-3 rounded-full px-5 py-3.5 text-sm transition-all duration-300 ${
                   isActive
                     ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white font-semibold shadow-[0_4px_15px_rgba(129,140,248,0.25)] translate-x-1'
@@ -75,7 +91,10 @@ export const Sidebar: React.FC = () => {
       <div className="p-6 border-t border-white/30">
         {isAuthenticated ? (
             <button
-            onClick={handleLogout}
+            onClick={() => {
+              handleLogout();
+              if (onClose) onClose();
+            }}
             className="flex w-full items-center gap-3 rounded-full px-5 py-3.5 text-sm font-medium text-slate-600 hover:bg-white/50 hover:text-red-600 transition-all hover:shadow-sm"
             >
             <LogOut size={20} strokeWidth={2} className="opacity-70" />
@@ -83,7 +102,10 @@ export const Sidebar: React.FC = () => {
             </button>
         ) : (
             <button
-            onClick={handleLogin}
+            onClick={() => {
+              handleLogin();
+              if (onClose) onClose();
+            }}
             className="flex w-full items-center gap-3 rounded-full px-5 py-3.5 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-all shadow-sm"
             >
             <LogIn size={20} strokeWidth={2} className="opacity-70" />
@@ -92,5 +114,6 @@ export const Sidebar: React.FC = () => {
         )}
       </div>
     </aside>
+    </>
   );
 };

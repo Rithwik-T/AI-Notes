@@ -141,7 +141,7 @@ export const SingleNote: React.FC = () => {
             </div>
           )}
           
-          <div className="p-8 md:p-12">
+          <div className="p-6 sm:p-8 md:p-12">
             <h1 className="mb-6 text-4xl font-bold tracking-tight text-zinc-900">{note.title}</h1>
             
             <div className="mb-8 flex flex-wrap gap-4 text-xs font-medium uppercase tracking-wider text-zinc-400 border-b border-zinc-100 pb-6">

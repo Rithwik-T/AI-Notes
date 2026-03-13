@@ -14,6 +14,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
   const { refreshUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [cardNumber, setCardNumber] = useState('');
   const [expiry, setExpiry] = useState('');
   const [cvc, setCvc] = useState('');
@@ -47,7 +48,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
       }, 2000);
     } catch (error) {
       console.error('Payment failed:', error);
-      alert('Payment failed. Please try again.');
+      setErrorMsg('Payment failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -82,6 +83,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
             </div>
 
             <form onSubmit={handleCheckout} className="p-6">
+              {errorMsg && (
+                <div className="mb-4 p-3 rounded-xl bg-red-50 text-red-700 text-sm font-medium border border-red-200">
+                  {errorMsg}
+                </div>
+              )}
               <div className="mb-6 rounded-2xl bg-indigo-50 p-4 border border-indigo-100 flex items-center justify-between">
                 <div>
                   <p className="text-sm font-semibold text-indigo-900">Pro Plan</p>

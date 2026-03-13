@@ -55,7 +55,7 @@ export const Home: React.FC = () => {
       <div className="fixed top-[10%] right-[-15%] w-[600px] h-[600px] bg-fuchsia-100/30 blur-[120px] rounded-full pointer-events-none z-0 mix-blend-multiply" />
 
       {/* Hero Section - iOS 26 Liquid Glass */}
-      <div className="relative z-10 w-full rounded-[2.5rem] border border-white/80 bg-gradient-to-b from-white/40 to-white/20 backdrop-blur-[60px] p-10 sm:p-14 shadow-[0_30px_90px_-20px_rgba(50,60,100,0.1)] overflow-hidden group transition-all duration-500 hover:shadow-[0_45px_110px_-15px_rgba(50,60,100,0.15)] ring-1 ring-white/60">
+      <div className="relative z-10 w-full rounded-[2.5rem] border border-white/80 bg-gradient-to-b from-white/40 to-white/20 backdrop-blur-[60px] p-6 sm:p-10 md:p-14 shadow-[0_30px_90px_-20px_rgba(50,60,100,0.1)] overflow-hidden group transition-all duration-500 hover:shadow-[0_45px_110px_-15px_rgba(50,60,100,0.15)] ring-1 ring-white/60">
         
         {/* Liquid Glass Internal Layers - Specular Highlights */}
         <div className="absolute inset-0 bg-gradient-to-br from-white/80 via-white/5 to-transparent pointer-events-none opacity-60" />
@@ -112,7 +112,7 @@ export const Home: React.FC = () => {
       <div className="grid gap-6 md:grid-cols-3 relative z-10">
         
         {/* Stats Card - Liquid Glass */}
-        <div className="rounded-[2rem] border border-white/60 bg-white/40 p-8 backdrop-blur-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 group relative overflow-hidden">
+        <div className="rounded-[2rem] border border-white/60 bg-white/40 p-6 sm:p-8 backdrop-blur-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 group relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-white/50 to-transparent pointer-events-none" />
           
           <div className="relative z-10">
@@ -141,7 +141,7 @@ export const Home: React.FC = () => {
         </div>
         
         {/* CTA Card 2 (Bottom) - Contextual Content Management - Liquid Glass */}
-        <div className="col-span-1 md:col-span-2 rounded-[2rem] border border-white/60 bg-white/40 p-8 flex flex-col md:flex-row items-center justify-between gap-8 shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 group relative overflow-hidden backdrop-blur-2xl">
+        <div className="col-span-1 md:col-span-2 rounded-[2rem] border border-white/60 bg-white/40 p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-8 shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 group relative overflow-hidden backdrop-blur-2xl">
             {/* Subtle Gradient Glow */}
             <div className="absolute inset-0 bg-gradient-to-r from-white/40 via-white/10 to-transparent opacity-50 pointer-events-none" />
             

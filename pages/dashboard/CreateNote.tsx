@@ -22,6 +22,7 @@ export const CreateNote: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isLimitReached, setIsLimitReached] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   
   // Image preview can be a Blob URL (new) or Storage Path (existing)
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -36,7 +37,7 @@ export const CreateNote: React.FC = () => {
       try {
         if (!id) {
           // If creating a NEW note, check count
-          if (user?.plan !== 'pro') {
+          if (user?.plan !== 'pro' && user?.plan !== 'trial') {
             const count = await noteService.getCount();
             if (count >= 3) {
               setIsLimitReached(true);
@@ -69,7 +70,7 @@ export const CreateNote: React.FC = () => {
   }, [id, navigate, user]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (user?.plan !== 'pro') {
+    if (user?.plan !== 'pro' && user?.plan !== 'trial') {
       e.preventDefault();
       e.target.value = '';
       setIsCheckoutOpen(true);
@@ -83,7 +84,7 @@ export const CreateNote: React.FC = () => {
   };
 
   const handleAttachmentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (user?.plan !== 'pro') {
+    if (user?.plan !== 'pro' && user?.plan !== 'trial') {
       e.preventDefault();
       e.target.value = '';
       setIsCheckoutOpen(true);
@@ -186,7 +187,7 @@ export const CreateNote: React.FC = () => {
         setIsLimitReached(true);
       } else {
         console.error("Error saving note:", error);
-        alert("Failed to save note.");
+        setSaveError("Failed to save note.");
       }
     } finally {
       setSaving(false);
@@ -323,7 +324,7 @@ export const CreateNote: React.FC = () => {
           </div>
         )}
 
-        <div className="flex-1 px-8 py-10 md:px-16 md:py-12">
+        <div className="flex-1 px-6 sm:px-8 py-8 md:px-16 md:py-12">
             <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-2 text-xs font-medium text-slate-400 uppercase tracking-wider">
                     <Calendar size={13} />
@@ -355,6 +356,13 @@ export const CreateNote: React.FC = () => {
                 autoFocus
             />
             
+            {saveError && (
+              <div className="mb-6 p-4 rounded-xl bg-red-50 text-red-700 text-sm font-medium border border-red-200 flex items-center gap-2">
+                <X size={16} className="cursor-pointer hover:text-red-900" onClick={() => setSaveError(null)} />
+                {saveError}
+              </div>
+            )}
+
             <div className="relative min-h-[400px]">
                 <Editor 
                     value={content} 

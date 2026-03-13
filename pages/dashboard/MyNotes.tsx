@@ -33,14 +33,14 @@ export const MyNotes: React.FC = () => {
 
   return (
     <div className="space-y-10 animate-in fade-in duration-500 pb-12">
-      <div className="flex items-end justify-between border-b border-slate-200 pb-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between border-b border-slate-200 pb-6 gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">My Notes</h1>
           <p className="text-slate-500 mt-2 text-base">
             Manage your personal knowledge base.
           </p>
         </div>
-        <Button onClick={() => navigate(RoutePath.CREATE_NOTE)} size="lg" className="rounded-full shadow-lg shadow-indigo-500/20">
+        <Button onClick={() => navigate(RoutePath.CREATE_NOTE)} size="lg" className="rounded-full shadow-lg shadow-indigo-500/20 w-full sm:w-auto justify-center">
           <Plus className="mr-2 h-5 w-5" />
           Create Note
         </Button>

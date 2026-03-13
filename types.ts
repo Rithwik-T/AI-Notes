@@ -22,7 +22,8 @@ export interface User {
   name: string;
   email: string;
   avatarUrl?: string;
-  plan?: 'free' | 'pro';
+  plan?: 'free' | 'pro' | 'trial';
+  trialEndsAt?: string;
 }
 
 export enum RoutePath {

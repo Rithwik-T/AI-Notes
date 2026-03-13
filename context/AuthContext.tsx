@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
 import { supabase } from '../supabaseClient';
 import { Session } from '@supabase/supabase-js';
+import { SplashScreen } from '../components/ui/SplashScreen';
 
 interface AuthContextType {
   user: User | null;
@@ -17,18 +18,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   const mapSessionToUser = (session: Session): User => {
+    let plan = session.user.user_metadata?.plan || 'free';
+    const trialEndsAt = session.user.user_metadata?.trialEndsAt;
+
+    // Auto-downgrade trial if expired
+    if (plan === 'trial' && trialEndsAt) {
+      if (new Date() > new Date(trialEndsAt)) {
+        plan = 'free';
+        // We don't await this here to avoid blocking the render, 
+        // but it will sync the DB for the next refresh
+        supabase.auth.updateUser({ data: { plan: 'free' } });
+      }
+    }
+
     return {
       id: session.user.id,
       email: session.user.email || '',
       name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
       avatarUrl: session.user.user_metadata?.avatar_url,
-      plan: session.user.user_metadata?.plan || 'free'
+      plan,
+      trialEndsAt
     };
   };
 
   useEffect(() => {
     // Get initial session
     const initSession = async () => {
+      const startTime = Date.now();
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
@@ -37,7 +53,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (error) {
         console.error('Error fetching session:', error);
       } finally {
-        setLoading(false);
+        const elapsed = Date.now() - startTime;
+        const minDelay = 1500; // Show splash screen for at least 1.5s
+        if (elapsed < minDelay) {
+          setTimeout(() => setLoading(false), minDelay - elapsed);
+        } else {
+          setLoading(false);
+        }
       }
     };
 
@@ -50,7 +72,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         setUser(null);
       }
-      setLoading(false);
+      // Only set loading false if we aren't in the initial splash screen window
+      // The initSession timeout will handle the initial loading state
     });
 
     return () => {
@@ -80,7 +103,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AuthContext.Provider value={{ user, isAuthenticated: !!user, logout, refreshUser }}>
-      {!loading && children}
+      {loading ? <SplashScreen /> : children}
     </AuthContext.Provider>
   );
 };

@@ -69,8 +69,14 @@ export const noteService = {
     if (!user) throw new Error('User not authenticated');
 
     // SaaS Limit Check
-    const plan = user.user_metadata?.plan || 'free';
-    if (plan !== 'pro') {
+    let plan = user.user_metadata?.plan || 'free';
+    const trialEndsAt = user.user_metadata?.trialEndsAt;
+    
+    if (plan === 'trial' && trialEndsAt && new Date() > new Date(trialEndsAt)) {
+      plan = 'free';
+    }
+
+    if (plan !== 'pro' && plan !== 'trial') {
       const currentCount = await noteService.getCount();
       if (currentCount >= NOTE_LIMIT) {
         throw new Error('FREE_LIMIT_REACHED');

@@ -8,12 +8,15 @@ import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/Button';
 import { StorageImage } from '../components/ui/StorageImage';
 import { CheckoutModal } from '../components/ui/CheckoutModal';
+import { WelcomeTrialModal } from '../components/ui/WelcomeTrialModal';
+import { OnboardingModal } from '../components/ui/OnboardingModal';
 
 export const DashboardLayout: React.FC = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   
   // Search State
@@ -103,6 +106,14 @@ export const DashboardLayout: React.FC = () => {
     return text.length > 60 ? text.substring(0, 60) + "..." : text;
   };
 
+  const getTrialDaysRemaining = () => {
+    if (user?.plan === 'trial' && user?.trialEndsAt) {
+      const diff = new Date(user.trialEndsAt).getTime() - new Date().getTime();
+      return Math.max(0, Math.ceil(diff / (1000 * 3600 * 24)));
+    }
+    return 0;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-50 via-slate-50 to-indigo-50 text-slate-900 flex flex-col md:flex-row selection:bg-indigo-500/30 selection:text-indigo-800 overflow-x-hidden relative">
       
@@ -110,12 +121,15 @@ export const DashboardLayout: React.FC = () => {
       <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-sky-200/30 rounded-full blur-3xl pointer-events-none z-0 mix-blend-multiply" />
       <div className="fixed bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-indigo-200/30 rounded-full blur-3xl pointer-events-none z-0 mix-blend-multiply" />
       
-      <Sidebar />
+      <Sidebar isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
       
       {/* Mobile Header */}
       <div className="md:hidden flex items-center justify-between border-b border-white/60 bg-white/60 backdrop-blur-2xl px-4 py-3 sticky top-0 z-50">
          <span className="font-bold text-slate-900 tracking-tight">AURA Ai</span>
-         <button className="text-slate-500 hover:text-slate-900 hover:bg-white/50 p-1 rounded-md transition-colors">
+         <button 
+           onClick={() => setIsMobileMenuOpen(true)}
+           className="text-slate-500 hover:text-slate-900 hover:bg-white/50 p-1 rounded-md transition-colors"
+         >
            <Menu size={20} />
          </button>
       </div>
@@ -124,7 +138,7 @@ export const DashboardLayout: React.FC = () => {
         
         {/* Top Header - Floating Glass Bar */}
         <div className="sticky top-4 z-30 px-4 lg:px-8 mb-4">
-          <header className="flex h-16 items-center justify-between rounded-2xl border border-white/60 bg-white/50 px-6 backdrop-blur-2xl shadow-sm transition-all">
+          <header className="flex h-16 items-center justify-between gap-4 rounded-2xl border border-white/60 bg-white/50 px-4 sm:px-6 backdrop-blur-2xl shadow-sm transition-all">
             
             {/* Search Bar Container */}
             <div ref={searchRef} className="relative w-full max-w-md">
@@ -217,6 +231,11 @@ export const DashboardLayout: React.FC = () => {
                     <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 px-3 py-1 text-[11px] font-bold tracking-wide text-white shadow-sm">
                       <Sparkles size={12} />
                       <span>PRO</span>
+                    </div>
+                  ) : user?.plan === 'trial' ? (
+                    <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-1 text-[11px] font-bold tracking-wide text-white shadow-sm">
+                      <Sparkles size={12} />
+                      <span>PRO ({getTrialDaysRemaining()} days remaining)</span>
                     </div>
                   ) : (
                     <button
@@ -315,6 +334,9 @@ export const DashboardLayout: React.FC = () => {
         onClose={() => setIsCheckoutOpen(false)} 
         onSuccess={() => {}} 
       />
+      
+      <WelcomeTrialModal />
+      <OnboardingModal />
     </div>
   );
 };
