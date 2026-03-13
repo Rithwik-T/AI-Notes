@@ -3,21 +3,25 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Save, ArrowLeft, Image as ImageIcon, Wand2, X, Calendar, Loader2, Paperclip, File as FileIcon, FileText, Zap, Sparkles, ChevronRight } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Editor } from '../../components/ui/Editor';
+import { CheckoutModal } from '../../components/ui/CheckoutModal';
 import { noteService } from '../../services/noteService';
 import { storageService } from '../../services/storageService';
 import { RoutePath, NoteAttachment } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { StorageImage } from '../../components/ui/StorageImage';
+import { useAuth } from '../../context/AuthContext';
 
 export const CreateNote: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>(); 
+  const { user, refreshUser } = useAuth();
   
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isLimitReached, setIsLimitReached] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   
   // Image preview can be a Blob URL (new) or Storage Path (existing)
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -32,11 +36,13 @@ export const CreateNote: React.FC = () => {
       try {
         if (!id) {
           // If creating a NEW note, check count
-          const count = await noteService.getCount();
-          if (count >= 3) {
-            setIsLimitReached(true);
-            setLoading(false);
-            return;
+          if (user?.plan !== 'pro') {
+            const count = await noteService.getCount();
+            if (count >= 3) {
+              setIsLimitReached(true);
+              setLoading(false);
+              return;
+            }
           }
         } else {
           // If editing an EXISTING note
@@ -57,8 +63,10 @@ export const CreateNote: React.FC = () => {
       }
     };
 
-    checkLimitAndFetch();
-  }, [id, navigate]);
+    if (user !== null) {
+      checkLimitAndFetch();
+    }
+  }, [id, navigate, user]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -206,7 +214,7 @@ export const CreateNote: React.FC = () => {
                 variant="primary" 
                 size="lg" 
                 className="rounded-full shadow-lg shadow-indigo-500/20 group h-14"
-                onClick={() => {}} // Placeholder for upgrade
+                onClick={() => setIsCheckoutOpen(true)}
               >
                 <Sparkles size={18} className="mr-2 group-hover:rotate-12 transition-transform" />
                 <span>Upgrade to Pro</span>
@@ -227,6 +235,14 @@ export const CreateNote: React.FC = () => {
             </p>
           </div>
         </div>
+        
+        <CheckoutModal 
+          isOpen={isCheckoutOpen} 
+          onClose={() => setIsCheckoutOpen(false)} 
+          onSuccess={() => {
+            setIsLimitReached(false);
+          }} 
+        />
       </div>
     );
   }

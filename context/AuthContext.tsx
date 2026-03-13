@@ -7,6 +7,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -20,7 +21,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       id: session.user.id,
       email: session.user.email || '',
       name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
-      avatarUrl: session.user.user_metadata?.avatar_url
+      avatarUrl: session.user.user_metadata?.avatar_url,
+      plan: session.user.user_metadata?.plan || 'free'
     };
   };
 
@@ -56,6 +58,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
+  const refreshUser = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setUser(mapSessionToUser(session));
+      }
+    } catch (error) {
+      console.error('Error refreshing session:', error);
+    }
+  };
+
   const logout = async () => {
     try {
       await supabase.auth.signOut();
@@ -66,7 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, logout, refreshUser }}>
       {!loading && children}
     </AuthContext.Provider>
   );

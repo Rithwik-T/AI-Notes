@@ -69,9 +69,12 @@ export const noteService = {
     if (!user) throw new Error('User not authenticated');
 
     // SaaS Limit Check
-    const currentCount = await noteService.getCount();
-    if (currentCount >= NOTE_LIMIT) {
-      throw new Error('FREE_LIMIT_REACHED');
+    const plan = user.user_metadata?.plan || 'free';
+    if (plan !== 'pro') {
+      const currentCount = await noteService.getCount();
+      if (currentCount >= NOTE_LIMIT) {
+        throw new Error('FREE_LIMIT_REACHED');
+      }
     }
 
     const { data, error } = await supabase
