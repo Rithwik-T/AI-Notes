@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { GoogleGenAI } from "@google/genai";
 import { Save, ArrowLeft, Image as ImageIcon, Wand2, X, Calendar, Loader2, Paperclip, File as FileIcon, FileText, Zap, Sparkles, ChevronRight } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Editor } from '../../components/ui/Editor';
@@ -19,6 +20,7 @@ export const CreateNote: React.FC = () => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [saving, setSaving] = useState(false);
+  const [isEnhancing, setIsEnhancing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isLimitReached, setIsLimitReached] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
@@ -119,6 +121,37 @@ export const CreateNote: React.FC = () => {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const handleAIEnhance = async () => {
+    if (user?.plan !== 'pro' && user?.plan !== 'trial') {
+      setIsCheckoutOpen(true);
+      return;
+    }
+    if (!content) return;
+    setIsEnhancing(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: `Please enhance, format, and improve the following note content. Make it more professional and well-structured. Keep it in HTML format. Do not add markdown code blocks around the HTML. Here is the content:\n\n${content}`,
+      });
+      
+      if (response.text) {
+        let enhancedText = response.text;
+        if (enhancedText.startsWith('```html')) {
+          enhancedText = enhancedText.replace(/^```html\n/, '').replace(/\n```$/, '');
+        } else if (enhancedText.startsWith('```')) {
+          enhancedText = enhancedText.replace(/^```\w*\n/, '').replace(/\n```$/, '');
+        }
+        setContent(enhancedText);
+      }
+    } catch (error: any) {
+      console.error("AI Enhance failed:", error);
+      setSaveError(`Failed to enhance note with AI: ${error.message || "Unknown error"}`);
+    } finally {
+      setIsEnhancing(false);
+    }
   };
 
   const handleSave = async () => {
@@ -282,10 +315,12 @@ export const CreateNote: React.FC = () => {
             <Button 
               variant="secondary" 
               size="sm" 
-              className="hidden sm:flex border-purple-100 bg-purple-50 text-purple-700 hover:bg-purple-100" 
-              disabled={!canEnhance}
+              className="flex border-purple-100 bg-purple-50 text-purple-700 hover:bg-purple-100" 
+              disabled={!canEnhance || isEnhancing}
+              onClick={handleAIEnhance}
+              isLoading={isEnhancing}
             >
-                <Wand2 className="mr-2 h-3.5 w-3.5 text-purple-600" />
+                {!isEnhancing && <Wand2 className="mr-2 h-3.5 w-3.5 text-purple-600" />}
                 <span>AI Enhance</span>
             </Button>
             <Button 

@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Edit3, Trash2, ArrowLeft, Calendar, Clock, AlertCircle, Paperclip, FileText, Download } from 'lucide-react';
+import { GoogleGenAI } from "@google/genai";
+import { Edit3, Trash2, ArrowLeft, Calendar, Clock, AlertCircle, Paperclip, FileText, Download, Wand2, X } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { noteService } from '../../services/noteService';
 import { storageService } from '../../services/storageService';
 import { Note, RoutePath } from '../../types';
-import { StorageImage } from '../../components/ui/StorageImage';
+import { CheckoutModal } from '../../components/ui/CheckoutModal';
+import { useAuth } from '../../context/AuthContext';
 
 export const SingleNote: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -13,8 +15,13 @@ export const SingleNote: React.FC = () => {
   const [note, setNote] = useState<Note | null>(null);
   const [loading, setLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [summary, setSummary] = useState<string | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { user } = useAuth();
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -85,6 +92,35 @@ export const SingleNote: React.FC = () => {
     }
   };
 
+  const handleSummarize = async () => {
+    if (user?.plan !== 'pro' && user?.plan !== 'trial') {
+      setIsCheckoutOpen(true);
+      return;
+    }
+    if (!note?.content) return;
+    setIsSummarizing(true);
+    setError(null);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      // Strip HTML tags for the prompt to save tokens and improve summary quality
+      const plainTextContent = note.content.replace(/<[^>]*>?/gm, '');
+      
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: `Please provide a concise, bulleted summary of the following note:\n\n${plainTextContent}`,
+      });
+      
+      if (response.text) {
+        setSummary(response.text);
+      }
+    } catch (err: any) {
+      console.error("AI Summarize failed:", err);
+      setError(`Failed to generate summary with AI: ${err.message || "Unknown error"}`);
+    } finally {
+      setIsSummarizing(false);
+    }
+  };
+
   if (loading) return <div className="flex h-screen items-center justify-center"><div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-900"></div></div>;
   if (!note) return null;
 
@@ -101,8 +137,19 @@ export const SingleNote: React.FC = () => {
             <Button 
               variant="secondary" 
               size="sm" 
+              onClick={handleSummarize}
+              disabled={isSummarizing || isDeleting}
+              isLoading={isSummarizing}
+              className="border-purple-100 bg-purple-50 text-purple-700 hover:bg-purple-100"
+            >
+              {!isSummarizing && <Wand2 className="mr-2 h-3.5 w-3.5 text-purple-600" />}
+              Summarize
+            </Button>
+            <Button 
+              variant="secondary" 
+              size="sm" 
               onClick={handleEdit}
-              disabled={isDeleting}
+              disabled={isDeleting || isSummarizing}
             >
               <Edit3 className="mr-2 h-3.5 w-3.5 text-zinc-500" />
               Edit
@@ -112,7 +159,7 @@ export const SingleNote: React.FC = () => {
               size="sm" 
               onClick={initiateDelete} 
               isLoading={isDeleting}
-              disabled={isDeleting}
+              disabled={isDeleting || isSummarizing}
               className="text-red-600 hover:text-red-700 hover:bg-red-50 hover:border-red-100"
             >
               <Trash2 className="mr-2 h-3.5 w-3.5" />
@@ -148,6 +195,26 @@ export const SingleNote: React.FC = () => {
               <span className="flex items-center"><Calendar size={14} className="mr-1.5 opacity-70" /> {new Date(note.createdAt).toLocaleDateString()}</span>
               <span className="flex items-center"><Clock size={14} className="mr-1.5 opacity-70" /> {new Date(note.updatedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
             </div>
+
+            {summary && (
+              <div className="mb-8 rounded-2xl border border-purple-100 bg-purple-50/50 p-6 relative animate-in fade-in slide-in-from-top-4">
+                <button 
+                  onClick={() => setSummary(null)}
+                  className="absolute top-4 right-4 text-purple-400 hover:text-purple-600 transition-colors"
+                >
+                  <X size={16} />
+                </button>
+                <div className="flex items-center gap-2 mb-3 text-purple-700 font-semibold">
+                  <Wand2 size={18} />
+                  <h3>AI Summary</h3>
+                </div>
+                <div className="prose prose-purple prose-sm max-w-none text-purple-900/80">
+                  {summary.split('\n').map((line, i) => (
+                    <p key={i} className="mb-1">{line}</p>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div 
               className="prose prose-zinc prose-lg max-w-none text-zinc-600 leading-8"
@@ -216,6 +283,13 @@ export const SingleNote: React.FC = () => {
           </div>
         </div>
       )}
+      <CheckoutModal 
+        isOpen={isCheckoutOpen} 
+        onClose={() => setIsCheckoutOpen(false)} 
+        onSuccess={() => {
+          // You could optionally trigger summarize here after success
+        }} 
+      />
     </>
   );
 };

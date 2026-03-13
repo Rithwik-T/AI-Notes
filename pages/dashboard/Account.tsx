@@ -20,6 +20,14 @@ export const Account: React.FC = () => {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState<{text: string, type: 'success' | 'error'} | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    oldPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordLoading, setPasswordLoading] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
     displayName: '',
@@ -118,15 +126,47 @@ export const Account: React.FC = () => {
     }
   };
 
-  const handlePasswordReset = async () => {
-    if (!email) return;
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + '/account',
-    });
-    if (error) {
-      setMessage({ text: error.message, type: 'error' });
-    } else {
-      setMessage({ text: 'Password reset email sent!', type: 'success' });
+  const handlePasswordChange = async () => {
+    if (!passwordForm.oldPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      setMessage({ text: "Please fill in all password fields.", type: 'error' });
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setMessage({ text: "New passwords do not match.", type: 'error' });
+      return;
+    }
+    if (passwordForm.newPassword.length < 6) {
+      setMessage({ text: "Password must be at least 6 characters.", type: 'error' });
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      // Verify old password first
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: passwordForm.oldPassword,
+      });
+
+      if (signInError) {
+        throw new Error("Incorrect current password.");
+      }
+
+      // Update to new password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: passwordForm.newPassword
+      });
+
+      if (updateError) throw updateError;
+
+      setMessage({ text: "Password updated successfully.", type: 'success' });
+      setIsChangingPassword(false);
+      setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (error: any) {
+      console.error("Error changing password:", error);
+      setMessage({ text: error.message || "Failed to change password.", type: 'error' });
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
@@ -149,6 +189,29 @@ export const Account: React.FC = () => {
       console.error("Error cancelling plan:", error);
       setMessage({ text: "Failed to cancel plan.", type: 'error' });
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setLoading(true);
+    try {
+      // Delete all user's notes
+      await supabase.from('notes').delete().eq('user_id', userId);
+      
+      // Attempt to delete user identity (if supported by backend) or just sign out
+      // Since client-side auth.admin.deleteUser isn't available, we clear data and sign out.
+      // If there's an RPC for delete_user, we can call it here.
+      const { error } = await supabase.rpc('delete_user');
+      if (error) {
+         console.log("No delete_user RPC found, proceeding with signout.");
+      }
+
+      await supabase.auth.signOut();
+      navigate(RoutePath.LOGIN);
+    } catch (error) {
+      console.error("Error deleting account:", error);
+      setMessage({ text: "Failed to delete account.", type: 'error' });
       setLoading(false);
     }
   };
@@ -290,20 +353,71 @@ export const Account: React.FC = () => {
                         </div>
 
                         <div className="rounded-3xl border border-white/60 bg-white/50 p-6 shadow-sm">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                <div className="flex items-center gap-4">
-                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
-                                        <Key size={18} />
+                            {isChangingPassword ? (
+                                <div className="flex flex-col gap-4 w-full animate-in fade-in slide-in-from-top-2">
+                                    <div className="flex items-center gap-4 mb-2">
+                                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+                                            <Key size={18} />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-semibold text-slate-900">Change Password</p>
+                                            <p className="text-xs text-slate-500">Enter your current and new password</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="text-sm font-semibold text-slate-900">Password</p>
-                                        <p className="text-xs text-slate-500">Last changed 3 months ago</p>
+                                    <div className="space-y-4">
+                                        <Input 
+                                            type="password" 
+                                            label="Current Password" 
+                                            value={passwordForm.oldPassword} 
+                                            onChange={(e) => setPasswordForm({...passwordForm, oldPassword: e.target.value})} 
+                                            placeholder="••••••••"
+                                            className="bg-white/70 border-white/50 focus:bg-white"
+                                        />
+                                        <Input 
+                                            type="password" 
+                                            label="New Password" 
+                                            value={passwordForm.newPassword} 
+                                            onChange={(e) => setPasswordForm({...passwordForm, newPassword: e.target.value})} 
+                                            placeholder="••••••••"
+                                            className="bg-white/70 border-white/50 focus:bg-white"
+                                        />
+                                        <Input 
+                                            type="password" 
+                                            label="Confirm New Password" 
+                                            value={passwordForm.confirmPassword} 
+                                            onChange={(e) => setPasswordForm({...passwordForm, confirmPassword: e.target.value})} 
+                                            placeholder="••••••••"
+                                            className="bg-white/70 border-white/50 focus:bg-white"
+                                        />
+                                    </div>
+                                    <div className="flex gap-2 mt-2">
+                                        <Button type="button" variant="primary" size="sm" onClick={handlePasswordChange} isLoading={passwordLoading}>
+                                            Save Password
+                                        </Button>
+                                        <Button type="button" variant="ghost" size="sm" onClick={() => {
+                                            setIsChangingPassword(false);
+                                            setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
+                                        }} disabled={passwordLoading}>
+                                            Cancel
+                                        </Button>
                                     </div>
                                 </div>
-                                <Button type="button" variant="outline" size="sm" onClick={handlePasswordReset} className="w-full sm:w-auto justify-center">
-                                    Change Password
-                                </Button>
-                            </div>
+                            ) : (
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+                                            <Key size={18} />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-semibold text-slate-900">Password</p>
+                                            <p className="text-xs text-slate-500">Manage your password</p>
+                                        </div>
+                                    </div>
+                                    <Button type="button" variant="outline" size="sm" onClick={() => setIsChangingPassword(true)} className="w-full sm:w-auto justify-center">
+                                        Change Password
+                                    </Button>
+                                </div>
+                            )}
                             
                             <div className="my-4 h-px w-full bg-slate-200/50" />
                             
@@ -384,10 +498,21 @@ export const Account: React.FC = () => {
                                         Permanently delete your account and all of your content. This action cannot be undone.
                                     </p>
                                 </div>
-                                <Button type="button" variant="danger" size="sm" className="whitespace-nowrap">
-                                    <Trash2 className="mr-2 h-3.5 w-3.5" />
-                                    Delete Account
-                                </Button>
+                                {showDeleteConfirm ? (
+                                    <div className="flex items-center gap-2">
+                                      <Button type="button" variant="danger" size="sm" onClick={handleDeleteAccount} isLoading={loading}>
+                                        Confirm Delete
+                                      </Button>
+                                      <Button type="button" variant="ghost" size="sm" onClick={() => setShowDeleteConfirm(false)} disabled={loading}>
+                                        Cancel
+                                      </Button>
+                                    </div>
+                                ) : (
+                                    <Button type="button" variant="danger" size="sm" className="whitespace-nowrap" onClick={() => setShowDeleteConfirm(true)}>
+                                        <Trash2 className="mr-2 h-3.5 w-3.5" />
+                                        Delete Account
+                                    </Button>
+                                )}
                              </div>
                         </div>
                     </div>
