@@ -16,6 +16,7 @@ export const DashboardLayout: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [checkoutPlan, setCheckoutPlan] = useState<'pro' | 'ultra'>('pro');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   
@@ -25,6 +26,17 @@ export const DashboardLayout: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOpenCheckout = (e: Event) => {
+      const customEvent = e as CustomEvent<'pro' | 'ultra'>;
+      setCheckoutPlan(customEvent.detail || 'pro');
+      setIsCheckoutOpen(true);
+    };
+
+    window.addEventListener('open-checkout', handleOpenCheckout);
+    return () => window.removeEventListener('open-checkout', handleOpenCheckout);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -71,7 +83,7 @@ export const DashboardLayout: React.FC = () => {
   const handleLogout = () => {
     setIsProfileMenuOpen(false);
     logout();
-    navigate(RoutePath.HOME); // Stay on home in guest mode
+    navigate(RoutePath.LANDING);
   };
 
   const handleLogin = () => {
@@ -106,16 +118,21 @@ export const DashboardLayout: React.FC = () => {
     return text.length > 60 ? text.substring(0, 60) + "..." : text;
   };
 
-  const getTrialDaysRemaining = () => {
+  const getTrialTimeRemaining = () => {
     if (user?.plan === 'trial' && user?.trialEndsAt) {
       const diff = new Date(user.trialEndsAt).getTime() - new Date().getTime();
-      return Math.max(0, Math.ceil(diff / (1000 * 3600 * 24)));
+      if (diff <= 0) return 'Expired';
+      const days = Math.floor(diff / (1000 * 3600 * 24));
+      if (days > 0) return `${days} day${days > 1 ? 's' : ''}`;
+      const hours = Math.floor((diff % (1000 * 3600 * 24)) / (1000 * 3600));
+      if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''}`;
+      return '< 1 hour';
     }
-    return 0;
+    return '';
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-slate-50 to-indigo-50 text-slate-900 flex flex-col md:flex-row selection:bg-indigo-500/30 selection:text-indigo-800 overflow-x-hidden relative">
+    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-slate-50 to-indigo-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 text-slate-900 dark:text-white flex flex-col md:flex-row selection:bg-indigo-500/30 selection:text-indigo-800 overflow-x-hidden relative transition-colors duration-300">
       
       {/* Decorative Background Blobs */}
       <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-sky-200/30 rounded-full blur-3xl pointer-events-none z-0 mix-blend-multiply" />
@@ -124,11 +141,11 @@ export const DashboardLayout: React.FC = () => {
       <Sidebar isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
       
       {/* Mobile Header */}
-      <div className="md:hidden flex items-center justify-between border-b border-white/60 bg-white/60 backdrop-blur-2xl px-4 py-3 sticky top-0 z-50">
-         <span className="font-bold text-slate-900 tracking-tight">AURA Ai</span>
+      <div className="md:hidden flex items-center justify-between border-b border-white/60 dark:border-white/10 bg-white/60 dark:bg-slate-900/60 backdrop-blur-2xl px-4 py-3 sticky top-0 z-50">
+         <span className="font-bold text-slate-900 dark:text-white tracking-tight">AURA Ai</span>
          <button 
            onClick={() => setIsMobileMenuOpen(true)}
-           className="text-slate-500 hover:text-slate-900 hover:bg-white/50 p-1 rounded-md transition-colors"
+           className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/10 p-1 rounded-md transition-colors"
          >
            <Menu size={20} />
          </button>
@@ -138,11 +155,11 @@ export const DashboardLayout: React.FC = () => {
         
         {/* Top Header - Floating Glass Bar */}
         <div className="sticky top-4 z-30 px-4 lg:px-8 mb-4">
-          <header className="flex h-16 items-center justify-between gap-4 rounded-2xl border border-white/60 bg-white/50 px-4 sm:px-6 backdrop-blur-2xl shadow-sm transition-all">
+          <header className="flex h-16 items-center justify-between gap-4 rounded-2xl border border-white/60 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 px-4 sm:px-6 backdrop-blur-2xl shadow-sm transition-all">
             
             {/* Search Bar Container */}
             <div ref={searchRef} className="relative w-full max-w-md">
-                <div className="flex items-center gap-3 text-slate-500 group rounded-full bg-white/70 px-4 py-2 ring-1 ring-white/60 transition-all focus-within:ring-indigo-500/30 focus-within:shadow-md w-full relative overflow-hidden">
+                <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400 group rounded-full bg-white/70 dark:bg-slate-900/70 px-4 py-2 ring-1 ring-white/60 dark:ring-white/10 transition-all focus-within:ring-indigo-500/30 focus-within:shadow-md w-full relative overflow-hidden">
                     <div className="absolute inset-y-0 left-0 w-1 bg-indigo-500/0 group-focus-within:bg-indigo-500 transition-all"></div>
                     <div className="relative flex items-center justify-center">
                         {isSearching ? (
@@ -156,7 +173,7 @@ export const DashboardLayout: React.FC = () => {
                         placeholder="Search notes..." 
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="bg-transparent text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none w-full ml-2"
+                        className="bg-transparent text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none w-full ml-2"
                         onFocus={() => searchQuery.trim() && setShowResults(true)}
                     />
                     {searchQuery ? (
@@ -174,10 +191,10 @@ export const DashboardLayout: React.FC = () => {
                 {/* Search Results Dropdown (Spotlight Style) */}
                 {showResults && (
                     <div className="absolute top-full left-0 right-0 mt-3 w-full origin-top animate-in fade-in slide-in-from-top-2 duration-200">
-                        <div className="overflow-hidden rounded-2xl border border-white/60 bg-white/80 backdrop-blur-3xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)] ring-1 ring-slate-900/5">
+                        <div className="overflow-hidden rounded-2xl border border-white/60 dark:border-white/10 bg-white/80 dark:bg-slate-800/90 backdrop-blur-3xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)] ring-1 ring-slate-900/5 dark:ring-white/5">
                             
                             {/* Search Header */}
-                            <div className="px-4 py-2 bg-white/50 border-b border-white/50 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                            <div className="px-4 py-2 bg-white/50 dark:bg-slate-800/50 border-b border-white/50 dark:border-white/10 text-[10px] font-bold uppercase tracking-widest text-slate-400">
                                 Results for "{searchQuery}"
                             </div>
 
@@ -187,20 +204,20 @@ export const DashboardLayout: React.FC = () => {
                                         <button
                                             key={note.id}
                                             onClick={() => handleSearchResultClick(note.id)}
-                                            className="w-full text-left px-4 py-3 hover:bg-white/80 transition-colors group flex items-start gap-3 border-b border-slate-100/50 last:border-0"
+                                            className="w-full text-left px-4 py-3 hover:bg-white/80 dark:hover:bg-slate-700/50 transition-colors group flex items-start gap-3 border-b border-slate-100/50 dark:border-slate-700/50 last:border-0"
                                         >
-                                            <div className="mt-1 h-8 w-8 shrink-0 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 group-hover:scale-105 transition-transform">
+                                            <div className="mt-1 h-8 w-8 shrink-0 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-500 group-hover:scale-105 transition-transform">
                                                 <FileText size={16} />
                                             </div>
                                             <div className="min-w-0">
-                                                <h4 className="text-sm font-semibold text-slate-900 truncate group-hover:text-indigo-600 transition-colors">
+                                                <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                                                     {note.title || 'Untitled Note'}
                                                 </h4>
                                                 <p className="text-xs text-slate-500 truncate mt-0.5 opacity-80">
                                                     {getPreviewText(note.content) || 'No content'}
                                                 </p>
                                                 <div className="mt-1.5 flex items-center gap-2">
-                                                    <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md">
+                                                    <span className="text-[10px] text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-md">
                                                         {new Date(note.updatedAt).toLocaleDateString()}
                                                     </span>
                                                 </div>
@@ -216,8 +233,8 @@ export const DashboardLayout: React.FC = () => {
                             </div>
                             
                             {/* Dropdown Footer */}
-                            <div className="bg-slate-50/50 px-3 py-2 text-[10px] text-slate-400 text-center border-t border-slate-100">
-                                Press <kbd className="font-sans px-1 py-0.5 bg-white rounded border border-slate-200 text-slate-500">Esc</kbd> to close
+                            <div className="bg-slate-50/50 dark:bg-slate-900/50 px-3 py-2 text-[10px] text-slate-400 text-center border-t border-slate-100 dark:border-slate-700">
+                                Press <kbd className="font-sans px-1 py-0.5 bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">Esc</kbd> to close
                             </div>
                         </div>
                     </div>
@@ -227,7 +244,12 @@ export const DashboardLayout: React.FC = () => {
             {isAuthenticated ? (
                 /* Authenticated User Menu */
                 <div className="flex items-center gap-4" ref={menuRef}>
-                  {user?.plan === 'pro' ? (
+                  {user?.plan === 'ultra' ? (
+                    <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-gradient-to-r from-purple-600 to-fuchsia-600 px-3 py-1 text-[11px] font-bold tracking-wide text-white shadow-sm">
+                      <Sparkles size={12} />
+                      <span>ULTRA</span>
+                    </div>
+                  ) : user?.plan === 'pro' ? (
                     <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 px-3 py-1 text-[11px] font-bold tracking-wide text-white shadow-sm">
                       <Sparkles size={12} />
                       <span>PRO</span>
@@ -235,22 +257,22 @@ export const DashboardLayout: React.FC = () => {
                   ) : user?.plan === 'trial' ? (
                     <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-1 text-[11px] font-bold tracking-wide text-white shadow-sm">
                       <Sparkles size={12} />
-                      <span>PRO ({getTrialDaysRemaining()} days remaining)</span>
+                      <span>PRO ({getTrialTimeRemaining()} left)</span>
                     </div>
                   ) : (
                     <button
                       onClick={() => setIsCheckoutOpen(true)}
-                      className="hidden sm:flex items-center gap-1.5 rounded-full bg-slate-100 border border-slate-200 px-3 py-1 text-[11px] font-bold tracking-wide text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-colors shadow-sm group"
+                      className="hidden sm:flex items-center gap-1.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1 text-[11px] font-bold tracking-wide text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors shadow-sm group"
                     >
                       <span>FREE</span>
-                      <span className="bg-slate-200 text-slate-500 px-1.5 rounded text-[9px] uppercase group-hover:bg-indigo-100 group-hover:text-indigo-500 transition-colors">Upgrade</span>
+                      <span className="bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 rounded text-[9px] uppercase group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/50 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">Upgrade</span>
                     </button>
                   )}
                   <div className="relative">
                     <button 
                       type="button"
                       onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-                      className="relative flex items-center justify-center rounded-full bg-white/40 backdrop-blur-md p-0.5 border border-white/70 shadow-[0_10px_30px_rgba(15,23,42,0.25)] cursor-pointer transition-all duration-200 ease-out hover:scale-[1.04] hover:shadow-[0_14px_40px_rgba(15,23,42,0.3)] focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:ring-offset-2 focus:ring-offset-transparent overflow-hidden"
+                      className="relative flex items-center justify-center rounded-full bg-white/40 dark:bg-slate-800/40 backdrop-blur-md p-0.5 border border-white/70 dark:border-white/10 shadow-[0_10px_30px_rgba(15,23,42,0.25)] cursor-pointer transition-all duration-200 ease-out hover:scale-[1.04] hover:shadow-[0_14px_40px_rgba(15,23,42,0.3)] focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:ring-offset-2 focus:ring-offset-transparent overflow-hidden"
                     >
                       <StorageImage 
                         path={user?.avatarUrl} 
@@ -264,7 +286,7 @@ export const DashboardLayout: React.FC = () => {
                     {/* Dropdown Menu */}
                     <div 
                       role="menu"
-                      className={`absolute right-0 mt-3 w-56 z-50 bg-white/60 backdrop-blur-2xl border border-white/80 rounded-2xl shadow-[0_22px_70px_rgba(15,23,42,0.35)] py-2 transition-all duration-180 ease-out origin-top-right ${
+                      className={`absolute right-0 mt-3 w-56 z-50 bg-white/60 dark:bg-slate-800/60 backdrop-blur-2xl border border-white/80 dark:border-white/10 rounded-2xl shadow-[0_22px_70px_rgba(15,23,42,0.35)] py-2 transition-all duration-180 ease-out origin-top-right ${
                         isProfileMenuOpen 
                           ? 'opacity-100 translate-y-0' 
                           : 'opacity-0 -translate-y-2 pointer-events-none'
@@ -274,36 +296,36 @@ export const DashboardLayout: React.FC = () => {
                         <button 
                           onClick={() => handleNavigation(RoutePath.ACCOUNT)}
                           role="menuitem"
-                          className="w-full flex items-center gap-3 px-3.5 py-2.5 cursor-pointer rounded-xl transition-colors duration-150 hover:bg-white/90 hover:backdrop-blur-3xl text-left group"
+                          className="w-full flex items-center gap-3 px-3.5 py-2.5 cursor-pointer rounded-xl transition-colors duration-150 hover:bg-white/90 dark:hover:bg-slate-700/90 hover:backdrop-blur-3xl text-left group"
                         >
                           <User className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
                           <div className="flex flex-col">
-                            <span className="text-sm font-medium text-slate-900">Profile</span>
-                            <span className="text-xs text-slate-500">View public profile</span>
+                            <span className="text-sm font-medium text-slate-900 dark:text-slate-100">Profile</span>
+                            <span className="text-xs text-slate-500 dark:text-slate-400">View public profile</span>
                           </div>
                         </button>
 
                         <button 
                           onClick={() => handleNavigation(RoutePath.ACCOUNT)}
                           role="menuitem"
-                          className="w-full flex items-center gap-3 px-3.5 py-2.5 cursor-pointer rounded-xl transition-colors duration-150 hover:bg-white/90 hover:backdrop-blur-3xl text-left group"
+                          className="w-full flex items-center gap-3 px-3.5 py-2.5 cursor-pointer rounded-xl transition-colors duration-150 hover:bg-white/90 dark:hover:bg-slate-700/90 hover:backdrop-blur-3xl text-left group"
                         >
                           <Settings className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
                           <div className="flex flex-col">
-                            <span className="text-sm font-medium text-slate-900">Account Settings</span>
-                            <span className="text-xs text-slate-500">Manage workspace</span>
+                            <span className="text-sm font-medium text-slate-900 dark:text-slate-100">Account Settings</span>
+                            <span className="text-xs text-slate-500 dark:text-slate-400">Manage workspace</span>
                           </div>
                         </button>
 
-                        <div className="h-px bg-gradient-to-r from-transparent via-slate-200/50 to-transparent my-1" />
+                        <div className="h-px bg-gradient-to-r from-transparent via-slate-200/50 dark:via-slate-700/50 to-transparent my-1" />
 
                         <button 
                           onClick={handleLogout}
                           role="menuitem"
-                          className="w-full flex items-center gap-3 px-3.5 py-2.5 cursor-pointer rounded-xl transition-colors duration-150 hover:bg-rose-50/90 text-left group"
+                          className="w-full flex items-center gap-3 px-3.5 py-2.5 cursor-pointer rounded-xl transition-colors duration-150 hover:bg-rose-50/90 dark:hover:bg-rose-900/30 text-left group"
                         >
                           <LogOut className="w-4 h-4 text-slate-400 group-hover:text-rose-500 transition-colors" />
-                          <span className="text-sm font-medium text-slate-700 group-hover:text-rose-600">Sign Out</span>
+                          <span className="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-rose-600 dark:group-hover:text-rose-400">Sign Out</span>
                         </button>
                       </div>
                     </div>
@@ -333,6 +355,7 @@ export const DashboardLayout: React.FC = () => {
         isOpen={isCheckoutOpen} 
         onClose={() => setIsCheckoutOpen(false)} 
         onSuccess={() => {}} 
+        plan={checkoutPlan}
       />
       
       <WelcomeTrialModal />

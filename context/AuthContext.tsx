@@ -20,6 +20,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const mapSessionToUser = (session: Session): User => {
     let plan = session.user.user_metadata?.plan || 'free';
     const trialEndsAt = session.user.user_metadata?.trialEndsAt;
+    const hasHadTrial = session.user.user_metadata?.hasHadTrial || false;
 
     // Auto-downgrade trial if expired
     if (plan === 'trial' && trialEndsAt) {
@@ -37,7 +38,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
       avatarUrl: session.user.user_metadata?.avatar_url,
       plan,
-      trialEndsAt
+      trialEndsAt,
+      hasHadTrial
     };
   };
 
@@ -84,7 +86,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshUser = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (session && user) {
+        session.user = user;
         setUser(mapSessionToUser(session));
       }
     } catch (error) {

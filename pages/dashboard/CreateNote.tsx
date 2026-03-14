@@ -39,8 +39,17 @@ export const CreateNote: React.FC = () => {
       try {
         if (!id) {
           // If creating a NEW note, check count
-          if (user?.plan !== 'pro' && user?.plan !== 'trial') {
-            const count = await noteService.getCount();
+          const count = await noteService.getCount();
+          if (user?.plan === 'ultra') {
+            // Unlimited
+          } else if (user?.plan === 'pro' || user?.plan === 'trial') {
+            if (count >= 10) {
+              setIsLimitReached(true);
+              setLoading(false);
+              return;
+            }
+          } else {
+            // Free plan
             if (count >= 3) {
               setIsLimitReached(true);
               setLoading(false);
@@ -72,7 +81,7 @@ export const CreateNote: React.FC = () => {
   }, [id, navigate, user]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (user?.plan !== 'pro' && user?.plan !== 'trial') {
+    if (user?.plan !== 'pro' && user?.plan !== 'trial' && user?.plan !== 'ultra') {
       e.preventDefault();
       e.target.value = '';
       setIsCheckoutOpen(true);
@@ -80,13 +89,24 @@ export const CreateNote: React.FC = () => {
     }
     const file = e.target.files?.[0];
     if (file) {
+      if (user?.plan === 'pro' || user?.plan === 'trial') {
+        const totalImages = existingAttachments.filter(a => a.type.startsWith('image/')).length + 
+                            newAttachments.filter(f => f.type.startsWith('image/')).length + 
+                            1; // The new cover image
+                            
+        if (totalImages > 6) {
+           alert("Pro plan is limited to 6 images per note. Upgrade to Ultra for unlimited images.");
+           e.target.value = '';
+           return;
+        }
+      }
       const url = URL.createObjectURL(file);
       setImagePreview(url);
     }
   };
 
   const handleAttachmentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (user?.plan !== 'pro' && user?.plan !== 'trial') {
+    if (user?.plan !== 'pro' && user?.plan !== 'trial' && user?.plan !== 'ultra') {
       e.preventDefault();
       e.target.value = '';
       setIsCheckoutOpen(true);
@@ -94,6 +114,20 @@ export const CreateNote: React.FC = () => {
     }
     if (e.target.files && e.target.files.length > 0) {
       const newFiles = Array.from(e.target.files);
+      
+      if (user?.plan === 'pro' || user?.plan === 'trial') {
+        const totalImages = existingAttachments.filter(a => a.type.startsWith('image/')).length + 
+                            newAttachments.filter(f => f.type.startsWith('image/')).length + 
+                            newFiles.filter(f => f.type.startsWith('image/')).length + 
+                            (imagePreview ? 1 : 0);
+                            
+        if (totalImages > 6) {
+           alert("Pro plan is limited to 6 images per note. Upgrade to Ultra for unlimited images.");
+           e.target.value = '';
+           return;
+        }
+      }
+
       setNewAttachments((prev) => [...prev, ...newFiles]);
     }
   };
@@ -124,7 +158,7 @@ export const CreateNote: React.FC = () => {
   };
 
   const handleAIEnhance = async () => {
-    if (user?.plan !== 'pro' && user?.plan !== 'trial') {
+    if (user?.plan !== 'pro' && user?.plan !== 'trial' && user?.plan !== 'ultra') {
       setIsCheckoutOpen(true);
       return;
     }
@@ -159,13 +193,22 @@ export const CreateNote: React.FC = () => {
     setSaving(true);
     
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error("Not authenticated");
 
       let noteId = id;
       let noteData: any = { title, content, tags: [] };
       
       if (!noteId) {
+        const count = await noteService.getCount();
+        if (user?.plan === 'ultra') {
+          // Unlimited
+        } else if (user?.plan === 'pro' || user?.plan === 'trial') {
+          if (count >= 10) throw new Error('PRO_LIMIT_REACHED');
+        } else {
+          if (count >= 3) throw new Error('FREE_LIMIT_REACHED');
+        }
+
         const newNote = await noteService.create(noteData);
         noteId = newNote.id;
       }
@@ -179,7 +222,7 @@ export const CreateNote: React.FC = () => {
         
         finalThumbnailUrl = await storageService.uploadFile(
           file, 
-          user.id, 
+          authUser.id, 
           `notes/${noteId}/cover`
         );
       } 
@@ -191,7 +234,7 @@ export const CreateNote: React.FC = () => {
       for (const file of newAttachments) {
         const path = await storageService.uploadFile(
           file, 
-          user.id, 
+          authUser.id, 
           `notes/${noteId}/attachments`,
           `${Date.now()}-${file.name}`
         );
@@ -216,7 +259,7 @@ export const CreateNote: React.FC = () => {
       navigate(RoutePath.NOTE_DETAIL.replace(':id', noteId));
       
     } catch (error: any) {
-      if (error.message === 'FREE_LIMIT_REACHED') {
+      if (error.message === 'FREE_LIMIT_REACHED' || error.message === 'PRO_LIMIT_REACHED') {
         setIsLimitReached(true);
       } else {
         console.error("Error saving note:", error);
@@ -233,6 +276,8 @@ export const CreateNote: React.FC = () => {
 
   // LIMIT REACHED UI
   if (isLimitReached) {
+    const isPro = user?.plan === 'pro' || user?.plan === 'trial';
+    
     return (
       <div className="mx-auto max-w-2xl animate-in fade-in zoom-in-95 duration-500 py-12 md:py-20">
         <div className="relative overflow-hidden rounded-[40px] border border-white/80 bg-white/40 backdrop-blur-3xl shadow-[0_40px_100px_-15px_rgba(0,0,0,0.05)] p-10 md:p-14 text-center ring-1 ring-white/50">
@@ -251,7 +296,11 @@ export const CreateNote: React.FC = () => {
                 Plan Limit Reached
               </h2>
               <p className="text-slate-600 text-lg font-medium leading-relaxed max-w-sm mx-auto">
-                Free users can create a maximum of <span className="text-indigo-600 font-bold">3 notes</span>. Upgrade to Pro for unlimited creative space.
+                {isPro ? (
+                  <>Pro users can create a maximum of <span className="text-indigo-600 font-bold">10 notes</span>. Upgrade to Ultra for unlimited creative space.</>
+                ) : (
+                  <>Free users can create a maximum of <span className="text-indigo-600 font-bold">3 notes</span>. Upgrade to Pro for unlimited creative space.</>
+                )}
               </p>
             </div>
 
@@ -263,7 +312,7 @@ export const CreateNote: React.FC = () => {
                 onClick={() => setIsCheckoutOpen(true)}
               >
                 <Sparkles size={18} className="mr-2 group-hover:rotate-12 transition-transform" />
-                <span>Upgrade to Pro</span>
+                <span>Upgrade to {isPro ? 'Ultra' : 'Pro'}</span>
                 <ChevronRight size={16} className="ml-1 opacity-60" />
               </Button>
               <Button 
@@ -277,7 +326,7 @@ export const CreateNote: React.FC = () => {
             </div>
             
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-              Join 2,000+ users on Pro
+              Join 2,000+ users on {isPro ? 'Ultra' : 'Pro'}
             </p>
           </div>
         </div>
@@ -288,6 +337,7 @@ export const CreateNote: React.FC = () => {
           onSuccess={() => {
             setIsLimitReached(false);
           }} 
+          plan={isPro ? 'ultra' : 'pro'}
         />
       </div>
     );
@@ -299,14 +349,14 @@ export const CreateNote: React.FC = () => {
 
   return (
     <div className="mx-auto max-w-4xl animate-in fade-in duration-500 pb-20">
-      <nav className="sticky top-4 z-50 mb-8 flex items-center justify-between rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-2xl transition-all">
+      <nav className="sticky top-4 z-50 mb-8 flex items-center justify-between rounded-2xl border border-slate-200 dark:border-slate-700/50 bg-white/80 dark:bg-slate-800/80 px-4 py-3 shadow-sm backdrop-blur-2xl transition-all">
         <div className="flex items-center gap-3">
-           <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="text-slate-500 hover:text-slate-900">
+           <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
              <ArrowLeft className="mr-2 h-4 w-4" />
              Back
            </Button>
-           <div className="h-4 w-px bg-slate-200"></div>
-           <span className="text-sm font-medium text-slate-500">
+           <div className="h-4 w-px bg-slate-200 dark:bg-slate-700"></div>
+           <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
               {id ? 'Edit Note' : 'New Draft'}
            </span>
         </div>
@@ -315,12 +365,12 @@ export const CreateNote: React.FC = () => {
             <Button 
               variant="secondary" 
               size="sm" 
-              className="flex border-purple-100 bg-purple-50 text-purple-700 hover:bg-purple-100" 
+              className="flex border-purple-100 dark:border-purple-900/50 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/40" 
               disabled={!canEnhance || isEnhancing}
               onClick={handleAIEnhance}
               isLoading={isEnhancing}
             >
-                {!isEnhancing && <Wand2 className="mr-2 h-3.5 w-3.5 text-purple-600" />}
+                {!isEnhancing && <Wand2 className="mr-2 h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />}
                 <span>AI Enhance</span>
             </Button>
             <Button 
@@ -336,22 +386,22 @@ export const CreateNote: React.FC = () => {
         </div>
       </nav>
 
-      <div className="relative min-h-[70vh] rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/50 overflow-hidden flex flex-col">
+      <div className="relative min-h-[70vh] rounded-3xl border border-slate-200 dark:border-slate-700/50 bg-white dark:bg-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none overflow-hidden flex flex-col">
         {imagePreview && (
-          <div className="relative aspect-[21/9] w-full group bg-slate-50 border-b border-slate-100">
+          <div className="relative aspect-[21/9] w-full group bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700/50">
               <StorageImage 
                 path={imagePreview} 
                 alt="Cover" 
                 className="h-full w-full object-cover" 
               />
               <div className="absolute top-4 right-4 flex gap-2 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
-                  <label className="cursor-pointer rounded-lg bg-white/90 px-3 py-1.5 text-xs font-medium text-slate-700 shadow-md backdrop-blur-md border border-slate-200 hover:bg-white transition-colors">
+                  <label className="cursor-pointer rounded-lg bg-white/90 dark:bg-slate-800/90 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 shadow-md backdrop-blur-md border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 transition-colors">
                       Change
                       <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
                   </label>
                   <button 
                       onClick={handleRemoveCover}
-                      className="rounded-lg bg-white/90 p-1.5 text-slate-700 shadow-md backdrop-blur-md border border-slate-200 hover:text-red-600 transition-colors"
+                      className="rounded-lg bg-white/90 dark:bg-slate-800/90 p-1.5 text-slate-700 dark:text-slate-300 shadow-md backdrop-blur-md border border-slate-200 dark:border-slate-700 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                   >
                       <X size={16} />
                   </button>
@@ -367,14 +417,14 @@ export const CreateNote: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-3">
-                   <label className="group flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500 transition-all hover:bg-white hover:text-indigo-600 hover:border-indigo-200 hover:shadow-sm">
+                   <label className="group flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-3 py-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 transition-all hover:bg-white dark:hover:bg-slate-800 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-200 dark:hover:border-indigo-500/50 hover:shadow-sm">
                       <Paperclip size={14} className="text-slate-400 group-hover:text-indigo-500" />
                       <span>Attach File</span>
                       <input type="file" multiple className="hidden" onChange={handleAttachmentUpload} />
                    </label>
                    {!imagePreview && (
-                      <label className="group flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500 transition-all hover:bg-white hover:text-slate-800 hover:border-slate-300 hover:shadow-sm">
-                         <ImageIcon size={14} className="text-slate-400 group-hover:text-slate-600" />
+                      <label className="group flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-3 py-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 transition-all hover:bg-white dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm">
+                         <ImageIcon size={14} className="text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300" />
                          <span>Add Cover</span>
                          <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
                       </label>
@@ -387,13 +437,13 @@ export const CreateNote: React.FC = () => {
                 placeholder="Untitled Note"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full border-none bg-transparent text-4xl sm:text-5xl font-extrabold text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-0 p-0 mb-8 tracking-tight leading-tight"
+                className="w-full border-none bg-transparent text-4xl sm:text-5xl font-extrabold text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:outline-none focus:ring-0 p-0 mb-8 tracking-tight leading-tight"
                 autoFocus
             />
             
             {saveError && (
-              <div className="mb-6 p-4 rounded-xl bg-red-50 text-red-700 text-sm font-medium border border-red-200 flex items-center gap-2">
-                <X size={16} className="cursor-pointer hover:text-red-900" onClick={() => setSaveError(null)} />
+              <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm font-medium border border-red-200 dark:border-red-900/50 flex items-center gap-2">
+                <X size={16} className="cursor-pointer hover:text-red-900 dark:hover:text-red-300" onClick={() => setSaveError(null)} />
                 {saveError}
               </div>
             )}
@@ -403,29 +453,29 @@ export const CreateNote: React.FC = () => {
                     value={content} 
                     onChange={setContent} 
                     placeholder="Press '/' for commands..."
-                    className="text-lg text-slate-700 leading-relaxed min-h-[400px]"
+                    className="text-lg text-slate-700 dark:text-slate-300 leading-relaxed min-h-[400px]"
                 />
             </div>
 
             {(newAttachments.length > 0 || existingAttachments.length > 0) && (
-              <div className="mt-12 border-t border-slate-100 pt-8 animate-in fade-in duration-300">
-                <h3 className="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
+              <div className="mt-12 border-t border-slate-100 dark:border-slate-700/50 pt-8 animate-in fade-in duration-300">
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
                   <Paperclip size={16} className="text-slate-400" />
                   Attachments ({newAttachments.length + existingAttachments.length})
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {existingAttachments.map((att) => (
-                    <div key={att.path} className="group relative flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-slate-300 hover:shadow-md transition-all duration-200">
-                      <div className="h-10 w-10 shrink-0 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 shadow-sm overflow-hidden">
+                    <div key={att.path} className="group relative flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-md transition-all duration-200">
+                      <div className="h-10 w-10 shrink-0 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 shadow-sm overflow-hidden">
                          <FileText size={20} />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-slate-700 truncate">{att.name}</p>
+                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">{att.name}</p>
                         <p className="text-xs text-slate-400">{formatFileSize(att.size)}</p>
                       </div>
                       <button 
                         onClick={() => removeExistingAttachment(att)}
-                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-white text-slate-400 border border-slate-200 shadow-sm flex items-center justify-center opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-100 hover:text-red-500 hover:border-red-200 transition-all duration-200"
+                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-white dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-center opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-100 hover:text-red-500 dark:hover:text-red-400 hover:border-red-200 dark:hover:border-red-900/50 transition-all duration-200"
                         title="Remove attachment"
                       >
                         <X size={12} strokeWidth={2.5} />
@@ -433,8 +483,8 @@ export const CreateNote: React.FC = () => {
                     </div>
                   ))}
                   {newAttachments.map((file, index) => (
-                    <div key={`new-${index}`} className="group relative flex items-center gap-3 p-3 rounded-xl border border-indigo-100 bg-indigo-50/30 hover:bg-white hover:border-indigo-200 hover:shadow-md transition-all duration-200">
-                      <div className="h-10 w-10 shrink-0 rounded-lg bg-white border border-indigo-100 flex items-center justify-center text-indigo-400 shadow-sm overflow-hidden">
+                    <div key={`new-${index}`} className="group relative flex items-center gap-3 p-3 rounded-xl border border-indigo-100 dark:border-indigo-900/50 bg-indigo-50/30 dark:bg-indigo-900/20 hover:bg-white dark:hover:bg-indigo-900/40 hover:border-indigo-200 dark:hover:border-indigo-800 hover:shadow-md transition-all duration-200">
+                      <div className="h-10 w-10 shrink-0 rounded-lg bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/50 flex items-center justify-center text-indigo-400 shadow-sm overflow-hidden">
                         {file.type.startsWith('image/') ? (
                           <img 
                             src={URL.createObjectURL(file)} 
@@ -447,12 +497,12 @@ export const CreateNote: React.FC = () => {
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-slate-900 truncate">{file.name}</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{file.name}</p>
                         <p className="text-xs text-indigo-400 font-medium">Ready to upload</p>
                       </div>
                       <button 
                         onClick={() => removeNewAttachment(index)}
-                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-white text-slate-400 border border-slate-200 shadow-sm flex items-center justify-center opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-100 hover:text-red-500 hover:border-red-200 transition-all duration-200"
+                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-white dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-center opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-100 hover:text-red-500 dark:hover:text-red-400 hover:border-red-200 dark:hover:border-red-900/50 transition-all duration-200"
                       >
                         <X size={12} strokeWidth={2.5} />
                       </button>
@@ -463,7 +513,7 @@ export const CreateNote: React.FC = () => {
             )}
         </div>
 
-        <div className="border-t border-slate-100 bg-slate-50 px-8 py-3 text-center">
+        <div className="border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/50 px-8 py-3 text-center">
             <p className="text-xs text-slate-400">
                Your note will be saved securely.
             </p>

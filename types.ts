@@ -22,12 +22,14 @@ export interface User {
   name: string;
   email: string;
   avatarUrl?: string;
-  plan?: 'free' | 'pro' | 'trial';
+  plan?: 'free' | 'pro' | 'ultra' | 'trial';
   trialEndsAt?: string;
+  hasHadTrial?: boolean;
 }
 
 export enum RoutePath {
-  HOME = '/',
+  LANDING = '/',
+  HOME = '/dashboard',
   NOTES = '/notes',
   CREATE_NOTE = '/notes/new',
   EDIT_NOTE = '/notes/:id/edit',

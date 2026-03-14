@@ -14,6 +14,7 @@
 
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             fontFamily: {
@@ -44,6 +45,10 @@
         -moz-osx-font-smoothing: grayscale;
         color: #0f172a; /* Slate 900 */
       }
+      .dark body {
+        background-color: #0f172a; /* Slate 900 */
+        color: #f8fafc; /* Slate 50 */
+      }
       /* Custom scrollbar */
       ::-webkit-scrollbar {
         width: 6px;
@@ -60,6 +65,20 @@
         background: #94a3b8; /* Slate 400 */
       }
 
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 4px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 20px;
+      }
+      .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #475569;
+      }
+
       /* Quill Editor Overrides for Light Mode */
       .ql-toolbar.ql-snow {
         border: none !important;
@@ -68,14 +87,26 @@
         margin-bottom: 16px;
         background: transparent;
       }
+      .dark .ql-toolbar.ql-snow {
+        border-bottom: 1px solid #334155 !important; /* Slate 700 */
+      }
       .ql-toolbar.ql-snow .ql-stroke {
         stroke: #64748b !important; /* Slate 500 */
+      }
+      .dark .ql-toolbar.ql-snow .ql-stroke {
+        stroke: #94a3b8 !important; /* Slate 400 */
       }
       .ql-toolbar.ql-snow .ql-fill {
         fill: #64748b !important;
       }
+      .dark .ql-toolbar.ql-snow .ql-fill {
+        fill: #94a3b8 !important;
+      }
       .ql-toolbar.ql-snow .ql-picker {
         color: #64748b !important;
+      }
+      .dark .ql-toolbar.ql-snow .ql-picker {
+        color: #94a3b8 !important;
       }
       .ql-container.ql-snow {
         border: none !important;
@@ -88,10 +119,16 @@
         color: #334155; /* Slate 700 */
         line-height: 1.75;
       }
+      .dark .ql-editor {
+        color: #cbd5e1; /* Slate 300 */
+      }
       .ql-editor.ql-blank::before {
         font-style: normal !important;
         color: #94a3b8 !important; /* Slate 400 */
         left: 0 !important;
+      }
+      .dark .ql-editor.ql-blank::before {
+        color: #475569 !important; /* Slate 600 */
       }
     </style>
   <script type="importmap">

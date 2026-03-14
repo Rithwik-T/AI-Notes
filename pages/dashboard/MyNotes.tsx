@@ -33,10 +33,10 @@ export const MyNotes: React.FC = () => {
 
   return (
     <div className="space-y-10 animate-in fade-in duration-500 pb-12">
-      <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between border-b border-slate-200 pb-6 gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between border-b border-slate-200 dark:border-slate-800 pb-6 gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">My Notes</h1>
-          <p className="text-slate-500 mt-2 text-base">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">My Notes</h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-2 text-base">
             Manage your personal knowledge base.
           </p>
         </div>
@@ -49,7 +49,7 @@ export const MyNotes: React.FC = () => {
       {loading ? (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((n) => (
-             <div key={n} className="h-72 animate-pulse rounded-2xl bg-white border border-slate-200"></div>
+             <div key={n} className="h-72 animate-pulse rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700"></div>
           ))}
         </div>
       ) : (
@@ -58,13 +58,13 @@ export const MyNotes: React.FC = () => {
             <div 
               key={note.id} 
               onClick={() => navigate(RoutePath.NOTE_DETAIL.replace(':id', note.id))}
-              className="group cursor-pointer flex flex-col overflow-hidden rounded-2xl bg-white border border-slate-200 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/50 hover:border-slate-300"
+              className="group cursor-pointer flex flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 hover:border-slate-300 dark:hover:border-slate-600"
             >
               {/* Image / Header */}
-              <div className="relative h-44 w-full overflow-hidden bg-slate-50 border-b border-slate-100">
+              <div className="relative h-44 w-full overflow-hidden bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800">
                 {note.thumbnailUrl ? (
                    <>
-                    <div className="absolute inset-0 bg-indigo-900/0 transition-colors duration-500 group-hover:bg-indigo-900/10 z-10" />
+                    <div className="absolute inset-0 bg-indigo-900/0 transition-colors duration-500 group-hover:bg-indigo-900/10 dark:group-hover:bg-indigo-900/30 z-10" />
                     <StorageImage 
                         path={note.thumbnailUrl} 
                         alt={note.title} 
@@ -72,37 +72,37 @@ export const MyNotes: React.FC = () => {
                     />
                    </>
                 ) : (
-                   <div className="h-full w-full bg-slate-100 flex items-center justify-center">
-                      <FileText className="text-slate-300 transition-colors group-hover:text-slate-400" size={48} strokeWidth={1} />
+                   <div className="h-full w-full bg-slate-100 dark:bg-slate-800/50 flex items-center justify-center">
+                      <FileText className="text-slate-300 dark:text-slate-600 transition-colors group-hover:text-slate-400 dark:group-hover:text-slate-500" size={48} strokeWidth={1} />
                    </div>
                 )}
                 
                 {/* Date Badge */}
                 <div className="absolute top-4 right-4 z-20">
-                     <div className="flex items-center gap-1.5 rounded-full bg-white/80 backdrop-blur-md px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-slate-600 shadow-sm ring-1 ring-slate-200">
-                        <Calendar size={11} className="text-slate-400" />
+                     <div className="flex items-center gap-1.5 rounded-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-slate-600 dark:text-slate-300 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
+                        <Calendar size={11} className="text-slate-400 dark:text-slate-500" />
                         <span>{new Date(note.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
                      </div>
                 </div>
               </div>
               
               <div className="flex flex-1 flex-col p-6">
-                <h3 className="mb-2 text-lg font-bold tracking-tight text-slate-900 leading-snug group-hover:text-indigo-600 transition-colors">
+                <h3 className="mb-2 text-lg font-bold tracking-tight text-slate-900 dark:text-white leading-snug group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                   {note.title}
                 </h3>
                 
-                <p className="text-slate-500 line-clamp-3 leading-relaxed text-sm mb-5 font-light">
+                <p className="text-slate-500 dark:text-slate-400 line-clamp-3 leading-relaxed text-sm mb-5 font-light">
                   {getPreviewText(note.content) || <span className="italic opacity-50">Empty note</span>}
                 </p>
 
-                <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-4">
+                <div className="mt-auto flex items-center justify-between border-t border-slate-100 dark:border-slate-700 pt-4">
                    <div className="flex items-center gap-2">
                       <div className="h-5 w-5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center text-[9px] font-bold text-white shadow-sm">
                         ME
                       </div>
-                      <span className="text-xs text-slate-500">Edited just now</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">Edited just now</span>
                    </div>
-                   <div className="flex items-center text-xs font-medium text-slate-400 group-hover:text-indigo-600 transition-colors">
+                   <div className="flex items-center text-xs font-medium text-slate-400 dark:text-slate-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                       <span>Open</span>
                       <ArrowUpRight size={14} className="ml-1 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                    </div>
@@ -114,12 +114,12 @@ export const MyNotes: React.FC = () => {
       )}
       
       {!loading && notes.length === 0 && (
-          <div className="flex h-80 flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 bg-white/50 text-center px-4">
-             <div className="h-16 w-16 bg-white rounded-full flex items-center justify-center shadow-md border border-slate-200 mb-5">
-                 <FileText size={28} className="text-slate-400" />
+          <div className="flex h-80 flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 text-center px-4">
+             <div className="h-16 w-16 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-md border border-slate-200 dark:border-slate-700 mb-5">
+                 <FileText size={28} className="text-slate-400 dark:text-slate-500" />
              </div>
-             <h3 className="text-lg font-semibold text-slate-900">No notes yet</h3>
-             <p className="text-slate-500 mb-6 max-w-sm">Create your first note to get started.</p>
+             <h3 className="text-lg font-semibold text-slate-900 dark:text-white">No notes yet</h3>
+             <p className="text-slate-500 dark:text-slate-400 mb-6 max-w-sm">Create your first note to get started.</p>
              <Button onClick={() => navigate(RoutePath.CREATE_NOTE)} variant="primary" className="rounded-full">Create your first note</Button>
           </div>
       )}
